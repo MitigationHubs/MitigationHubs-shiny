@@ -78,7 +78,7 @@ body <- dashboardBody(
         tabItem(tabName = "fallzahlen",
                 fluidRow(
                     box(
-                        title = 'Fallzahlenentwicklung', solidHeader = T, status = "primary", width = 12,
+                        title = 'Fallzahlenentwicklung der Infektion mit Covid-19', solidHeader = T, status = "primary", width = 12,
                         plotOutput("fallzahlen_plot1", height = 750),
                         textOutput('fallzahlen_publikationsdatum')
                     )
@@ -109,6 +109,20 @@ body <- dashboardBody(
                         checkboxInput("fallzahlen_checkbox_ls", "Logarithmische Skala", T),
                         checkboxInput("fallzahlen_checkbox_ta", "Gemeinsame Achsen", T),
                         actionButton("fallzahlen_plot_action3", "Änderungen anwenden", icon = icon("calculator"))
+                    )
+                ),
+                fluidRow(
+                    box(
+                        status = "warning", width = 4, 
+                        tags$div(class="header", checked=NA,
+                                 tags$h2("MitigationHubs - ",
+                                         tags$a(href="https://mitigationhubs.github.io/", "mitigationhubs.github.io"))
+                        ),
+                        tags$div(class="header", checked=NA,
+                                 tags$h4("MitigationHubs bringt das Projekt #flattenthecurve in Eure Wohnzimmer! Welche Region dämmt außergewöhnlich gut die Corona-Pandemie ein? Und wieso? Der Kampf gegen das Virus ist eine wissenschaftlichen Aufgabe, welche die Beteilung der Bürger:innen benötigt. Lasst uns",
+                                         tags$a(href="https://forms.gle/3Jd2hRYbJGRBZ42d6?hl=de", "kooperieren,"),
+                                         "lasst uns positive Stories über Corona erzählen und daraus lernen!")
+                        )
                     )
                 )
         ),
