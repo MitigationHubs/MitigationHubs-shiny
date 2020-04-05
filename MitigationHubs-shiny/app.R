@@ -14,12 +14,22 @@ library(readr)
 library(dplyr)
 source('config.R')
 
+# load data
+load(files$LK_dat)
+
 # Define plots
 plt_fallzahlen <- function(dat_dots, dat_smooth = NULL, dat_gr = NULL, log_scale = T, shared_axes = T) {
     plt <- ggplot(mapping = aes(x = Meldedatum)) + 
         geom_line(aes(y = csum_LK_100kEinwohner), dat_dots, color = 'black', size = 1.2) +
         geom_point(aes(y = csum_LK_100kEinwohner), dat_dots, color = 'black', size = 7, shape = '\u2716')
     if (!is.null(dat_gr)) {
+        if (log_scale) {
+            dat_gr <- dat_gr %>% 
+                mutate(gr_ma = 10^gr_ma)
+        } else {
+            dat_gr <- dat_gr %>% 
+                mutate(gr_ma = 100*gr_ma)
+        }
         plt <- plt + 
             geom_line(aes(y = gr_ma), dat_gr, color = 'orange', alpha = 0.7, size = 1.2) + 
             geom_point(aes(y = gr_ma), dat_gr, color = 'orange', size = 7, shape = '\u2716')
@@ -32,13 +42,13 @@ plt_fallzahlen <- function(dat_dots, dat_smooth = NULL, dat_gr = NULL, log_scale
         facet_wrap(~ Landkreis, scales = {if(shared_axes) {'fixed'} else {'free'}})
     if (log_scale & !is.null(dat_gr)) {
         plt <- plt + 
-            scale_y_log10(sec.axis = dup_axis(name = 'Wachstumsrate'))
+            scale_y_log10(sec.axis = dup_axis(name = 'Wachstumsrate pro Tag / %', breaks = 10^gr_logax_breaks, labels = gr_logax_breaks * 100))
     } else if (log_scale) {
         plt <- plt + 
             scale_y_log10()
     } else if (!is.null(dat_gr)) {
         plt <- plt + 
-            scale_y_continuous(sec.axis = dup_axis(name = 'Wachstumsrate'))
+            scale_y_continuous(sec.axis = dup_axis(name = 'Wachstumsrate pro Tag / %'))
     } else {
         plt <- plt + 
             scale_y_continuous()
@@ -46,13 +56,11 @@ plt_fallzahlen <- function(dat_dots, dat_smooth = NULL, dat_gr = NULL, log_scale
     plt <- plt + 
         labs(y = 'Fälle pro 100.000 Einwohner') + 
         theme_bw() + 
-        theme(text = element_text(size = 24), title = element_text(size = 30, face = 'bold'),
+        theme(text = element_text(size = 24), title = element_text(size = 30, face = 'bold'), 
+              axis.title.y.right = element_text(color = 'orange'), axis.text.y.right = element_text(color = 'orange'), 
               strip.background = element_blank(), strip.text = element_text(size = 30, face = 'bold', hjust = 0))
     return(plt)
 }
-
-# load data
-load(files$LK_dat)
 
 # Now define the actual app
 # Define UI contents
@@ -96,7 +104,7 @@ body <- dashboardBody(
                     box(
                         title = "Gegenmaßnahmen", status = "primary", width = 4,
                         checkboxGroupInput('fallzahlen_checkbox_gm', 'Bisher gesammelte Maßnahmen (noch nicht für alle Landkreise verfügbar)',
-                                           list('Test 1' = T, 'Test 2' = F)),
+                                           list('Kontaktverbot' = T, 'Test 2' = F)),
                         actionButton("fallzahlen_plot_action2", "Zeig mir die Gegenmaßnahmen", icon = icon("calculator")),
                         tags$div(class="header", checked=NA,
                                  tags$h4("Gegenmaßnahme melden?",
@@ -106,7 +114,8 @@ body <- dashboardBody(
                     box(
                         title = "Darstellungsoptionen", status = "primary", width = 4,
                         checkboxInput("fallzahlen_checkbox_gr", "Wachstumsraten", T),
-                        checkboxInput("fallzahlen_checkbox_ls", "Logarithmische Skala", T),
+                        selectizeInput("fallzahlen_grd_selector", "Zeitraum zur Berechnung der Wachstumsraten", choices = c(3,7), selected = 3),
+                        checkboxInput("fallzahlen_checkbox_ls", "Logarithmische Skala (Fallzahlen)", T),
                         checkboxInput("fallzahlen_checkbox_ta", "Gemeinsame Achsen", T),
                         actionButton("fallzahlen_plot_action3", "Änderungen anwenden", icon = icon("calculator"))
                     )
@@ -163,17 +172,25 @@ server <- function(input, output) {
         
         llog <- isolate(input$fallzahlen_checkbox_ls)
         lgr <- isolate(input$fallzahlen_checkbox_gr)
+        lgrd <- isolate(input$fallzahlen_grd_selector)
         lta <- isolate(input$fallzahlen_checkbox_ta)
         clks <- isolate(input$fallzahlen_landkreis_selector)
+        lmes <- isolate(input$fallzahlen_checkbox_gm)
+        print(lmes)
         
         IdsLandkreis <- LK_set %>% 
             filter(Landkreis %in% clks) %>% 
             .$IdLandkreis
         
-        if (lgr) {
+        if (lgr & lgrd == 3) {
             plt_fallzahlen(LK_dat_csum_proc %>% filter(IdLandkreis %in% IdsLandkreis),
                            LK_dat_csum_ma %>% filter(IdLandkreis %in% IdsLandkreis),
-                           LK_dat_csum_gr %>% filter(IdLandkreis %in% IdsLandkreis),
+                           LK_dat_csum_gr3d %>% filter(IdLandkreis %in% IdsLandkreis),
+                           llog, lta)
+        } else if (lgr & lgrd == 7) {
+            plt_fallzahlen(LK_dat_csum_proc %>% filter(IdLandkreis %in% IdsLandkreis),
+                           LK_dat_csum_ma %>% filter(IdLandkreis %in% IdsLandkreis),
+                           LK_dat_csum_gr7d %>% filter(IdLandkreis %in% IdsLandkreis),
                            llog, lta)
         } else {
             plt_fallzahlen(LK_dat_csum_proc %>% filter(IdLandkreis %in% IdsLandkreis),

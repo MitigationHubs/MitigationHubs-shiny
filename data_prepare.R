@@ -63,19 +63,19 @@ LK_dat_csum_gr_oa <- LK_dat_csum_ma %>%
     group_by(IdLandkreis) %>%
     nest() %>%
     mutate(lm = purrr::map(.$data, function(d) lm(y ~ x, rename(d, x = Meldedatum, y = csum_ma) %>% mutate(y = log(y))))) %>% 
-    mutate(gr = purrr::map(.$lm, function(l) coef(l)[2])) %>% 
+    mutate(gr = purrr::map(.$lm, function(l) coef(l)[2] %>% expm1(.))) %>% 
     select(-data,-lm) %>% 
-    unnest(gr) %>% #print()
+    unnest(gr) #print()
     #filter(csum_ma_LK_100kEinwohner > 0.05) %>% 
-    filter(gr > 0)
+    #filter(gr > 0)
 
 # growth rates on 3-day ma
-LK_dat_csum_gr <- LK_dat_csum_ma %>%
+LK_dat_csum_gr3d <- LK_dat_csum_ma %>%
     group_by(IdLandkreis) %>% 
     nest() %>% 
     mutate(gr_ma = purrr::map(.$data, function(d) {
         if (nrow(d) >= 3) {
-            z <- d %>% select(Meldedatum, csum_ma) %>% as.ts() %>% zoo::as.zoo()
+            z <- d %>% select(Meldedatum, csum_ma) %>% mutate(csum_ma = log(csum_ma)) %>% as.ts() %>% zoo::as.zoo()
             zoo::time(z) <- d$Meldedatum#z[,1]
             z <- z %>% zoo::rollapply(., width = 3, FUN = function(z) coef(lm(csum_ma ~ Meldedatum, data = as.data.frame(z))), by.column = F) %>% as.data.frame() %>%
                 rename(gr_ma = Meldedatum) %>% tibble::rownames_to_column(.,'Meldedatum') %>% as_tibble() %>% select(Meldedatum, gr_ma)
@@ -86,11 +86,34 @@ LK_dat_csum_gr <- LK_dat_csum_ma %>%
     })
     ) %>% 
     unnest(gr_ma) %>% 
+    mutate(gr_ma = expm1(gr_ma)) %>% 
     inner_join(LK_dat_csum_ma %>% distinct(Landkreis,IdLandkreis)) %>% 
     mutate_at(vars(Meldedatum), as.Date)
 
-LK_set <- LK_dat_csum_gr %>% 
+# growth rates on 7-day ma
+LK_dat_csum_gr7d <- LK_dat_csum_ma %>%
+    group_by(IdLandkreis) %>% 
+    nest() %>% 
+    mutate(gr_ma = purrr::map(.$data, function(d) {
+        if (nrow(d) >= 7) {
+            z <- d %>% select(Meldedatum, csum_ma) %>% mutate(csum_ma = log(csum_ma)) %>% as.ts() %>% zoo::as.zoo()
+            zoo::time(z) <- d$Meldedatum#z[,1]
+            z <- z %>% zoo::rollapply(., width = 7, FUN = function(z) coef(lm(csum_ma ~ Meldedatum, data = as.data.frame(z))), by.column = F) %>% as.data.frame() %>%
+                rename(gr_ma = Meldedatum) %>% tibble::rownames_to_column(.,'Meldedatum') %>% as_tibble() %>% select(Meldedatum, gr_ma)
+        } else {
+            z <- tibble(Meldedatum = NA_real_, gr_ma = NA_real_)
+        }
+        return(z)
+    })
+    ) %>% 
+    unnest(gr_ma) %>% 
+    mutate(gr_ma = expm1(gr_ma)) %>% 
+    inner_join(LK_dat_csum_ma %>% distinct(Landkreis,IdLandkreis)) %>% 
+    mutate_at(vars(Meldedatum), as.Date)
+
+LK_set <- LK_dat %>% 
+    mutate_at(vars(IdLandkreis), as.numeric) %>% 
     distinct(Landkreis, IdLandkreis)
 
 if (!dir.exists(file.path('MitigationHubs-shiny', paths$data_prepared))) dir.create(file.path('MitigationHubs-shiny', paths$data_prepared))
-save(LK_dat_csum_proc, LK_dat_csum_ma, LK_dat_csum_gr, LK_dat_csum_gr_oa, LK_time, LK_set, file = file.path('MitigationHubs-shiny', files$LK_dat))
+save(LK_dat_csum_proc, LK_dat_csum_ma, LK_dat_csum_gr3d, LK_dat_csum_gr7d, LK_dat_csum_gr_oa, LK_time, LK_set, file = file.path('MitigationHubs-shiny', files$LK_dat))

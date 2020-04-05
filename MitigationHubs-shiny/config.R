@@ -8,3 +8,6 @@ files <- list(
 # configuration for Landkreise selection
 nlk_max <- 6
 clks_selected <- c('SK Heidelberg')
+
+# plot configuration
+gr_logax_breaks <- c(0.1,0.2,0.3,0.4,0.5)

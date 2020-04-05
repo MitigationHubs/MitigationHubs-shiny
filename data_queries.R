@@ -14,9 +14,10 @@ require(dplyr)
 #' @export
 #'
 #' @examples dat <- query_arcgis_all()
-query_arcgis_all <- function(n_entries = 16637,
+query_arcgis_all <- function(n_entries = 36520,
                              batch_size = 2000,
                              force_download = FALSE,
+                             write2file = T,
                              dir = './data/data_landkreise') {
   n_batch <- seq(0, plyr::round_any(n_entries, 1e3), by = batch_size)
   # check if data already queried
@@ -47,7 +48,6 @@ query_arcgis_all <- function(n_entries = 16637,
   } else {
     print('query database')
     arcgis_url <- 'https://services7.arcgis.com/mOBPykOjAyBO2ZKk/ArcGIS/rest/services/RKI_COVID19/FeatureServer/0/'
-  
     dat <- lapply(n_batch, function(n_b){
       qloc <- paste0(arcgis_url,
                      'query?where=ObjectId+>+0&objectIds=&time=&resultType=none&outFields=*&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=false&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=',
@@ -66,9 +66,11 @@ query_arcgis_all <- function(n_entries = 16637,
     dat$Meldedatum <- as.POSIXct(dat$Meldedatum/1000, origin = "1970-01-01")
     date <- max(dat$Meldedatum) %>% 
       as.Date()
-    if (!dir.exists(dir)) dir.create(dir)
-    file <- file.path(dir,paste0('data_landkreise','_',date,'.csv'))
-    write.csv(x = dat, file = file)
+    if (write2file) {
+        if (!dir.exists(dir)) dir.create(dir)
+        file <- file.path(dir,paste0('data_landkreise','_',date,'.csv'))
+        readr::write_csv(x = dat, path = file)   
+    }
   }
   return(list(dat = dat, time = time))
 }
