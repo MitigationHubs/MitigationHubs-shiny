@@ -3,3 +3,14 @@
 .RData
 .Ruserdata
 *.Rproj
+data/data_cases
+data/data_measures_filtered
+data/data_measures_raw
+data/data_predictors
+data/data_update
+data_prepared
+logs
+MitigationHubs-shiny/data
+MitigationHubs-shiny/logs
+MitigationHubs-shiny/data_prepared
+MitigationHubs-shiny/rsconnect

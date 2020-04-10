@@ -9,16 +9,91 @@
 
 library(shiny)
 library(shinydashboard)
+library(googledrive)
 library(ggplot2)
 library(readr)
 library(dplyr)
+library(readxl)
 source('config.R')
 
+# deauth googledrive
+drive_deauth()
+
+# check if data is up to date
+update <- list(
+    cases = TRUE,
+    measuresf = TRUE
+)
+drive_download(
+    file = drive_get(as_id(gfiletokens$update)), 
+    path = gfiles$update,
+    type = gtypes$update, 
+    overwrite = TRUE
+)
+g_update <- read_csv(
+    gfiles$update
+)
+g_update <- as.list(g_update$last_update) %>% 
+    setNames(g_update$name)
+
+if (file.exists(afiles$log_update)) {
+    load(afiles$log_update)
+    if (log_update$cases == g_update$cases) update$cases <- FALSE
+    if (log_update$measuresf == g_update$measures) update$measuresf <- FALSE
+}
+
 # load data
-load(files$LK_dat)
+if (update$cases) {
+    drive_download(
+        file = drive_get(as_id(gfiletokens$cases)), 
+        path = gfiles$cases,
+        type = gtypes$cases, 
+        overwrite = TRUE
+    )
+    tibs <- excel_sheets(gfiles$cases)
+    invisible(
+        lapply(tibs, 
+           function(s) {
+               temp <- read_xlsx(gfiles$cases, sheet = s)
+               if ('Meldedatum' %in% colnames(temp)) {
+                   temp <- mutate_at(temp, vars(Meldedatum), as.Date)
+               }
+               assign(s, temp)
+               }
+           )
+    )
+    tibs <- lapply(tibs, get)
+    print(tibs)
+    save(tibs, file = afiles$cases)
+} else {
+    load(afiles$cases)
+}
+if (update$measuresf) {
+    drive_download(
+        file = drive_get(as_id(gfiletokens$measuresf)), 
+        path = gfiles$measuresf,
+        type = gtypes$measuresf, 
+        overwrite = TRUE
+    )
+    tibs <- excel_sheets(gfiles$measuresf)
+    invisible(
+        lapply(tibs, 
+               function(s) assign(s, read_xlsx(gfiles$measuresf, sheet = s)))
+    )
+    tibs <- lapply(tibs, get)
+    save(tibs, file = afiles$measuresf)
+} else {
+    load(afiles$measures)
+}
+
+# save update log
+log_update <- g_update
+save(log_update, file = afiles$log_update)
 
 # Define plots
-plt_fallzahlen <- function(dat_dots, dat_smooth = NULL, dat_gr = NULL, log_scale = T, shared_axes = T) {
+plt_fallzahlen <- function(dat_dots, dat_smooth = NULL, dat_gr = NULL, dat_meas = NULL, log_scale = T, shared_axes = T) {
+    print(dat_meas)
+    dat_gr <- dat_gr %>% mutate_at(vars(Meldedatum), as.Date)
     plt <- ggplot(mapping = aes(x = Meldedatum)) + 
         geom_line(aes(y = csum_LK_100kEinwohner), dat_dots, color = 'black', size = 1.2) +
         geom_point(aes(y = csum_LK_100kEinwohner), dat_dots, color = 'black', size = 7, shape = '\u2716')
@@ -37,6 +112,11 @@ plt_fallzahlen <- function(dat_dots, dat_smooth = NULL, dat_gr = NULL, log_scale
     if (!is.null(dat_smooth)) {
         plt <- plt + 
             geom_smooth(aes(y = csum_ma_LK_100kEinwohner), dat_smooth %>% filter(use == T), size = 1.2)
+    }
+    if (!is.null(dat_meas)) {
+        plt <- plt + 
+            geom_vline(aes(xintercept = date, color = measure), dat_meas) + 
+            scale_color_viridis_d(guide = guide_legend('Gegenmaßnahme', override.aes = list(size = 5)))
     }
     plt <- plt +
         facet_wrap(~ Landkreis, scales = {if(shared_axes) {'fixed'} else {'free'}})
@@ -58,7 +138,8 @@ plt_fallzahlen <- function(dat_dots, dat_smooth = NULL, dat_gr = NULL, log_scale
         theme_bw() + 
         theme(text = element_text(size = 24), title = element_text(size = 30, face = 'bold'), 
               axis.title.y.right = element_text(color = 'orange'), axis.text.y.right = element_text(color = 'orange'), 
-              strip.background = element_blank(), strip.text = element_text(size = 30, face = 'bold', hjust = 0))
+              strip.background = element_blank(), strip.text = element_text(size = 30, face = 'bold', hjust = 0),
+              legend.position = 'bottom', legend.box.background = element_rect(color = 'black'), legend.box.just = 'top')
     return(plt)
 }
 
@@ -87,7 +168,7 @@ body <- dashboardBody(
                 fluidRow(
                     box(
                         title = 'Fallzahlenentwicklung der Infektion mit Covid-19', solidHeader = T, status = "primary", width = 12,
-                        plotOutput("fallzahlen_plot1", height = 750),
+                        plotOutput("fallzahlen_plot1", height = 600),
                         textOutput('fallzahlen_publikationsdatum')
                     )
                 ),
@@ -104,7 +185,7 @@ body <- dashboardBody(
                     box(
                         title = "Gegenmaßnahmen", status = "primary", width = 4,
                         checkboxGroupInput('fallzahlen_checkbox_gm', 'Bisher gesammelte Maßnahmen (noch nicht für alle Landkreise verfügbar)',
-                                           list('Kontaktverbot' = T, 'Test 2' = F)),
+                                           choices = LK_meas_set$measure),
                         actionButton("fallzahlen_plot_action2", "Zeig mir die Gegenmaßnahmen", icon = icon("calculator")),
                         tags$div(class="header", checked=NA,
                                  tags$h4("Gegenmaßnahme melden?",
@@ -176,27 +257,35 @@ server <- function(input, output) {
         lta <- isolate(input$fallzahlen_checkbox_ta)
         clks <- isolate(input$fallzahlen_landkreis_selector)
         lmes <- isolate(input$fallzahlen_checkbox_gm)
-        print(lmes)
         
         IdsLandkreis <- LK_set %>% 
             filter(Landkreis %in% clks) %>% 
             .$IdLandkreis
         
+        LK_meas_loc <- NULL
+        if (!is.null(lmes)) {
+            LK_meas_loc <- LK_meas %>% 
+                filter(measure %in% lmes & IdLandkreis %in% IdsLandkreis)
+        }
+        
         if (lgr & lgrd == 3) {
             plt_fallzahlen(LK_dat_csum_proc %>% filter(IdLandkreis %in% IdsLandkreis),
                            LK_dat_csum_ma %>% filter(IdLandkreis %in% IdsLandkreis),
                            LK_dat_csum_gr3d %>% filter(IdLandkreis %in% IdsLandkreis),
-                           llog, lta)
+                           LK_meas_loc,
+                           log_scale = llog, shared_axes = lta)
         } else if (lgr & lgrd == 7) {
             plt_fallzahlen(LK_dat_csum_proc %>% filter(IdLandkreis %in% IdsLandkreis),
                            LK_dat_csum_ma %>% filter(IdLandkreis %in% IdsLandkreis),
                            LK_dat_csum_gr7d %>% filter(IdLandkreis %in% IdsLandkreis),
-                           llog, lta)
+                           LK_meas_loc,
+                           log_scale = llog, shared_axes = lta)
         } else {
             plt_fallzahlen(LK_dat_csum_proc %>% filter(IdLandkreis %in% IdsLandkreis),
                            LK_dat_csum_ma %>% filter(IdLandkreis %in% IdsLandkreis),
                            NULL,
-                           llog, lta)
+                           LK_meas_loc,
+                           log_scale = llog, shared_axes = lta)
         }
         
     })

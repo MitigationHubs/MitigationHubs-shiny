@@ -3,6 +3,7 @@ require(rlist)
 require(jsonlite)
 require(readr)
 require(dplyr)
+library(googledrive)
 
 #' helper function to download daily RKI data for "Landkreise" and format them as a tibble
 #'
@@ -15,10 +16,10 @@ require(dplyr)
 #'
 #' @examples dat <- query_arcgis_all()
 query_arcgis_all <- function(n_entries = 36520,
-                             batch_size = 2000,
+                             batch_size = 5000,
                              force_download = FALSE,
                              write2file = T,
-                             dir = './data/data_landkreise') {
+                             dir = './data/data_cases') {
   n_batch <- seq(0, plyr::round_any(n_entries, 1e3), by = batch_size)
   # check if data already queried
   time <- Sys.time() %>% 
@@ -75,3 +76,35 @@ query_arcgis_all <- function(n_entries = 36520,
   return(list(dat = dat, time = time))
 }
 
+#' Helper funtion to query the unprocessed mitigation measures from GDrive
+#'
+#' @return
+#' @export
+#'
+#' @examples
+query_gform_measures <- function() {
+    if(!drive_has_token()){
+        stop("No authentification with googledrive set up so far, please use drive_auth() and sheets_auth(token = drive_token())")
+    } else {
+        if (!dir.exists(gpaths$measuresr)) dir.create(gpaths$measuresr)
+        drive_download(
+            file = as_id(gfiletokens$measuresr), 
+            path = gfiles$measuresr,
+            type = gtypes$measuresr, 
+            overwrite = TRUE
+        )
+        response <- read_csv(file = gfiles$measuresr) %>% 
+            select(matches("Wann wurden die Maßnahmen|Postleitzahl|Um welche Maßnahme|Erzähle uns mehr|wieder aufgehoben|Wann wurde die Maßnahme aufgehoben")) %>% rename(wann=1, plz=2, was=3, info=4, aufgehoben=5, wann_aufgehoben=6)
+        
+        gverzeichnis.lookup <- read_delim("data/data_landkreise/gemeindeverzeichnis.csv", ";", escape_double = FALSE, trim_ws = TRUE)  %>% 
+            select(matches("Amtl.Gemeindeschlüssel|PLZ Ort")) %>% rename(schlüssel=1, plz_ort=2)
+        
+        gverzeichnis <- tibble(
+            plz = as.numeric(unlist(regmatches(gverzeichnis.lookup$plz_ort, gregexpr("[[:digit:]]+", gverzeichnis.lookup$plz_ort)))),
+            IdLandkreis = gverzeichnis.lookup$schlüssel %>% substr(1, 5)
+        )
+        
+        response <- response %>% left_join(gverzeichnis) %>% filter(was != "sonstiges")
+        return(response)
+    }
+}
