@@ -108,10 +108,10 @@ query_gform_measures <- function() {
         response <- response %>% as_tibble() 
         
         #join by plz  
-        joined.plz <- response %>% select(-stadt) %>% inner_join(gverzeichnis, )
+        joined.plz <- response %>% select(-stadt) %>% inner_join(gverzeichnis)
         
         #join by stadt
-        joined.stadt <- response %>% select(-plz) %>% inner_join(gverzeichnis, )
+        joined.stadt <- response %>% select(-plz) %>% inner_join(gverzeichnis)
         
         #merge: filtered result
         result <- full_join(joined.plz, joined.stadt) %>% filter(was != "sonstiges")  %>% filter(!is.na(IdLandkreis))
@@ -121,9 +121,10 @@ query_gform_measures <- function() {
           response,
           result %>% select(-plz, -stadt))
         
-        l <- list()
-        l$result <- result
-        l$joined.fail <- joined.fail
+        l <- list(
+            result = result,
+            joined.fail = joined.fail
+        )
         
         return(l)
     }

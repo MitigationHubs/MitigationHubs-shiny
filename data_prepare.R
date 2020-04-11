@@ -1,5 +1,5 @@
 source('MitigationHubs-shiny/config.R')
-source('data_queries.R')
+source('data_queries.R', local = TRUE, encoding = 'UTF-8')
 library(stringr)
 library(tidyr)
 library(tibble)

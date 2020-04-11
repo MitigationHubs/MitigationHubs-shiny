@@ -11,6 +11,7 @@ library(shiny)
 library(shinydashboard)
 library(googledrive)
 library(ggplot2)
+library(ggnewscale)
 library(readr)
 library(dplyr)
 library(readxl)
@@ -93,8 +94,12 @@ save(log_update, file = afiles$log_update)
 plt_fallzahlen <- function(dat_dots, dat_smooth = NULL, dat_gr = NULL, dat_meas = NULL, log_scale = T, shared_axes = T) {
     dat_gr <- dat_gr %>% mutate_at(vars(Meldedatum), as.Date)
     plt <- ggplot(mapping = aes(x = Meldedatum)) + 
-        geom_line(aes(y = csum_LK_100kEinwohner), dat_dots, color = 'black', size = 1.2) +
-        geom_point(aes(y = csum_LK_100kEinwohner), dat_dots, color = 'black', size = 7, shape = '\u2716')
+        geom_col(aes(y = csum_LK_100kEinwohner, fill = 'Fallzahlen'), dat_dots, size = 1.2, alpha = 0.2) +
+        geom_point(aes(y = csum_LK_100kEinwohner, color = 'Fallzahlen'), dat_dots, size = 7, shape = '\u2716') + 
+        scale_fill_manual(values = csc$lblue, guide = guide_legend('Fallzahlen', override.aes = list(size = 5))) + 
+        scale_color_manual(values = csc$lblue, guide = guide_legend('Fallzahlen')) + 
+        new_scale_colour() + 
+        new_scale_fill()
     if (!is.null(dat_gr)) {
         if (log_scale) {
             dat_gr <- dat_gr %>% 
@@ -104,29 +109,37 @@ plt_fallzahlen <- function(dat_dots, dat_smooth = NULL, dat_gr = NULL, dat_meas 
                 mutate(gr_ma = 100*gr_ma)
         }
         plt <- plt + 
-            geom_line(aes(y = gr_ma), dat_gr, color = 'orange', alpha = 0.7, size = 1.2) + 
-            geom_point(aes(y = gr_ma), dat_gr, color = 'orange', size = 7, shape = '\u2716')
+            geom_line(aes(y = gr_ma, color = 'Wachstumsraten'), dat_gr, alpha = 0.7, size = 1.2) + 
+            geom_point(aes(y = gr_ma, color = 'Wachstumsraten'), dat_gr, size = 7, shape = '\u2716') + 
+            scale_color_manual(values = csc$red, guide = guide_legend(override.aes = list(size = 5))) + 
+            new_scale_color()
     }
     if (!is.null(dat_smooth)) {
         plt <- plt + 
-            geom_smooth(aes(y = csum_ma_LK_100kEinwohner), dat_smooth %>% filter(use == T), size = 1.2)
+            geom_smooth(aes(y = csum_ma_LK_100kEinwohner, color = 'Interpolation\n(mit Fehlerbereich)'), 
+                        dat_smooth %>% filter(use == T), size = 1.2) + 
+            scale_color_manual(values = csc$lorange, guide = guide_legend(override.aes = list(size = 5))) + 
+            new_scale_color()
     }
     if (!is.null(dat_meas)) {
         plt <- plt + 
-            geom_vline(aes(xintercept = date, color = measure), dat_meas) + 
-            scale_color_viridis_d(guide = guide_legend('Gegenmaßnahme', override.aes = list(size = 5)))
+            geom_vline(aes(xintercept = date, color = measure), dat_meas, size = 1.2) + 
+            geom_label(aes(x = date, y = 0, color = measure, label = measure), dat_meas, hjust = 0.5, vjust = 1) + 
+            scale_color_viridis_d(guide = FALSE)#guide_legend('Gegenmaßnahme', override.aes = list(size = 5)))
     }
     plt <- plt +
         facet_wrap(~ Landkreis, scales = {if(shared_axes) {'fixed'} else {'free'}})
     if (log_scale & !is.null(dat_gr)) {
         plt <- plt + 
-            scale_y_log10(sec.axis = dup_axis(name = 'Wachstumsrate pro Tag / %', breaks = 10^gr_logax_breaks, labels = gr_logax_breaks * 100))
+            scale_y_log10(sec.axis = dup_axis(name = 'Wachstumsrate pro Tag / %',
+                                              breaks = 10^gr_logax_breaks, labels = gr_logax_breaks * 100),
+                          limits = c(-100, NA))
     } else if (log_scale) {
         plt <- plt + 
             scale_y_log10()
     } else if (!is.null(dat_gr)) {
         plt <- plt + 
-            scale_y_continuous(sec.axis = dup_axis(name = 'Wachstumsrate pro Tag / %'))
+            scale_y_continuous(sec.axis = dup_axis(name = 'Wachstumsrate pro Tag / %'), limits = c(-8,NA))
     } else {
         plt <- plt + 
             scale_y_continuous()
@@ -135,9 +148,11 @@ plt_fallzahlen <- function(dat_dots, dat_smooth = NULL, dat_gr = NULL, dat_meas 
         labs(y = 'Fälle pro 100.000 Einwohner') + 
         theme_bw() + 
         theme(text = element_text(size = 24), title = element_text(size = 30, face = 'bold'), 
-              axis.title.y.right = element_text(color = 'orange'), axis.text.y.right = element_text(color = 'orange'), 
+              axis.title.y.left = element_text(color = csc$lblue), axis.text.y.left = element_text(color = csc$lblue), 
+              axis.title.y.right = element_text(color = csc$red), axis.text.y.right = element_text(color = csc$red), 
               strip.background = element_blank(), strip.text = element_text(size = 30, face = 'bold', hjust = 0),
-              legend.position = 'bottom', legend.box.background = element_rect(color = 'black'), legend.box.just = 'top')
+              legend.position = 'bottom', legend.box.background = element_rect(color = 'black'), legend.box.just = 'top',
+              legend.title = element_blank(), legend.key.size = unit(1, 'cm'))
     return(plt)
 }
 
@@ -183,7 +198,7 @@ body <- dashboardBody(
                     box(
                         title = "Gegenmaßnahmen", status = "primary", width = 4,
                         checkboxGroupInput('fallzahlen_checkbox_gm', 'Bisher gesammelte Maßnahmen (noch nicht für alle Landkreise verfügbar)',
-                                           choices = LK_meas_set$measure),
+                                           choiceNames = LK_meas_set$measure, choiceValues = LK_meas_set$measureId),
                         actionButton("fallzahlen_plot_action2", "Zeig mir die Gegenmaßnahmen", icon = icon("calculator")),
                         tags$div(class="header", checked=NA,
                                  tags$h4("Gegenmaßnahme melden?",
@@ -254,16 +269,18 @@ server <- function(input, output) {
         lgrd <- isolate(input$fallzahlen_grd_selector)
         lta <- isolate(input$fallzahlen_checkbox_ta)
         clks <- isolate(input$fallzahlen_landkreis_selector)
-        lmes <- isolate(input$fallzahlen_checkbox_gm)
+        imes <- isolate(input$fallzahlen_checkbox_gm)
         
         IdsLandkreis <- LK_set %>% 
             filter(Landkreis %in% clks) %>% 
             .$IdLandkreis
         
         LK_meas_loc <- NULL
-        if (!is.null(lmes)) {
+        if (!is.null(imes)) {
+            imes <- as.numeric(imes)
             LK_meas_loc <- LK_meas %>% 
-                filter(measure %in% lmes & IdLandkreis %in% IdsLandkreis)
+                filter(measureId %in% imes & IdLandkreis %in% IdsLandkreis)
+            if (nrow(LK_meas_loc) == 0) LK_meas_loc <- NULL
         }
         
         if (lgr & lgrd == 3) {

@@ -44,3 +44,10 @@ clks_selected <- c('SK Heidelberg')
 
 # plot configuration
 gr_logax_breaks <- c(0.1,0.2,0.3,0.4,0.5)
+csc <- list(
+    dorange = '#fc910d',
+    lorange = '#fcb13e',
+    red = '#ed6d50',
+    lblue = '#239cd3',
+    dblue = '#1674b1'
+)
