@@ -50,7 +50,7 @@ LK_dat_csum_ma <- LK_dat_csum %>%
     filter(!is.na(csum_ma)) %>% 
     group_by(IdLandkreis, Meldedatum) %>% 
     inner_join(LK_pred, by = 'IdLandkreis') %>% 
-    mutate(csum_ma_LK_100kEinwohner = 1e5*csum_ma/!!sym('Bevölkerung(2018)')) %>% 
+    mutate(csum_ma_LK_100kEinwohner = 1e5*csum_ma/Bevoelkerung) %>% 
     ungroup()
 
 # growth rates over all (using 3-day ma)

@@ -12,7 +12,7 @@ drive_auth()
 
 # query and process case numbers
 ## check N_ENTRIES here: https://www.arcgis.com/home/item.html?id=dd4580c810204019a7b8eb3e0b329dd6&view=list#data
-N_ENTRIES <- 84367
+N_ENTRIES <- 87327
 ## query, prepare and write data locally
 source('data_prepare_cases.R', local = TRUE, encoding = 'UTF-8')
 
@@ -44,6 +44,9 @@ if(!drive_has_token()){
 
 # query and process mitigation measures
 source('data_prepare_measures.R', local = TRUE, encoding = 'UTF-8')
+
+LK_meas <- LK_meas %>% 
+    inner_join(LK_set, by = 'IdLandkreis')
 
 dat <- list(
     LK_meas = LK_meas,

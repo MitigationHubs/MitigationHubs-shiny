@@ -63,7 +63,6 @@ if (update$cases) {
            )
     )
     tibs <- lapply(tibs, get)
-    print(tibs)
     save(tibs, file = afiles$cases)
 } else {
     load(afiles$cases)
@@ -92,7 +91,6 @@ save(log_update, file = afiles$log_update)
 
 # Define plots
 plt_fallzahlen <- function(dat_dots, dat_smooth = NULL, dat_gr = NULL, dat_meas = NULL, log_scale = T, shared_axes = T) {
-    print(dat_meas)
     dat_gr <- dat_gr %>% mutate_at(vars(Meldedatum), as.Date)
     plt <- ggplot(mapping = aes(x = Meldedatum)) + 
         geom_line(aes(y = csum_LK_100kEinwohner), dat_dots, color = 'black', size = 1.2) +
