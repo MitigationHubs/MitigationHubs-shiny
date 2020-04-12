@@ -82,6 +82,7 @@ if (update$measuresf) {
     save(list = tibs, file = afiles$measuresf)
 } else {
     load(afiles$measures)
+    LK_meas <- LK_meas %>% mutate_at(vars(date), as.Date)
 }
 
 # save update log
