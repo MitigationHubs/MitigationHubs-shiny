@@ -39,8 +39,8 @@ g_update <- as.list(g_update$last_update) %>%
 
 if (file.exists(afiles$log_update)) {
     load(afiles$log_update)
-    if (log_update$cases == g_update$cases) update$cases <- FALSE
-    if (log_update$measuresf == g_update$measures) update$measuresf <- FALSE
+    if (log_update$cases == g_update$cases & file.exists(afiles$cases)) update$cases <- FALSE
+    if (log_update$measuresf == g_update$measures & file.exists(afiles$measuresf)) update$measuresf <- FALSE
 }
 
 # load data
@@ -51,9 +51,7 @@ if (update$cases) {
         type = gtypes$cases, 
         overwrite = TRUE
     )
-    print('#')
     tibs <- excel_sheets(gfiles$cases)
-    print(tibs)
     invisible(
         lapply(tibs, 
            function(s) {
@@ -65,8 +63,7 @@ if (update$cases) {
                }
            )
     )
-    tibs <- lapply(tibs, get)
-    save(tibs, file = afiles$cases)
+    save(list = tibs, file = afiles$cases)
 } else {
     load(afiles$cases)
 }
@@ -82,8 +79,7 @@ if (update$measuresf) {
         lapply(tibs, 
                function(s) assign(s, read_xlsx(gfiles$measuresf, sheet = s), envir = globalenv()))
     )
-    tibs <- lapply(tibs, get)
-    save(tibs, file = afiles$measuresf)
+    save(list = tibs, file = afiles$measuresf)
 } else {
     load(afiles$measures)
 }
