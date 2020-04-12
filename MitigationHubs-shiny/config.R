@@ -19,7 +19,7 @@ gfiletokens <- list(
 gtypes <- list(
     cases = "xlsx",
     measuresf = 'xlsx',
-    measuresr = 'csv',
+    measuresr = 'xlsx',
     update = 'csv'
 )
 gpaths <- list(
@@ -39,11 +39,43 @@ lapply(apaths, function(p) if(!dir.exists(p)) dir.create(p, recursive = T))
 lapply(gpaths, function(p) if(!dir.exists(p)) dir.create(p, recursive = T))
 
 # configuration for Landkreise selection
-nlk_max <- 6
+nlk_max <- 4
 clks_selected <- c('SK Heidelberg')
 
+# configuration for measures
+measures_short <- tibble(
+    was = c(
+        "Schul-, Kita- &/oder Kindergartenschließung",
+        "Änderung Öffnungszeiten von Supermärkten für Risikogruppen",
+        "Einrichtung von Einkaufshilfen für Risikogruppen",
+        "Schließung von Gastronomiebetrieben",
+        "Einschränkung des Universitäts-Betriebes",
+        "Verbot von Veranstaltungen über 1000 Personen",
+        "Verbot von Veranstaltungen über 100 Personen",
+        "allgemeines Veranstaltungsverbot",
+        "HomeOffice-Option für Arbeitnehmer eines großen Betriebs in der Region",
+        "Schutzvorrichtungen zur Kontaktvermeidung in Läden wie Supermärkten oder Apotheken",
+        "Betretungsregeln für öffentliche Geschäfte",
+        "weitgehende Ladenschließungen (Supermärkte, Drogerien, Apotheken ausgenommen)"
+    ),
+    measure_short = c(
+        "Schul-, Kita- &/oder Kigaschließung",
+        "Öffnungszeiten für Riskiogruppen",
+        "Einkaufshilfen für Risikogruppen",
+        "Schließung Gastronomie",
+        "Einschränkung Universität",
+        "Veranstaltungsverbot > 1000",
+        "Veranstaltungsverbot > 100",
+        "Veranstaltungsverbot",
+        "Home Office für viele Beschäftigte",
+        "Schutzmaßnahmen in Geschäften",
+        "Betretungsregeln für Geschäfte",
+        "Ladenschließungen"
+    )
+)
+
 # plot configuration
-gr_logax_breaks <- c(0.1,0.2,0.3,0.4,0.5)
+gr_ax_breaks <- c(0.1,0.2,0.3,0.4,0.5)
 csc <- list(
     dorange = '#fc910d',
     lorange = '#fcb13e',

@@ -4,6 +4,7 @@ require(jsonlite)
 require(readr)
 require(dplyr)
 library(googledrive)
+library(readxl)
 
 #' helper function to download daily RKI data for "Landkreise" and format them as a tibble
 #'
@@ -93,7 +94,7 @@ query_gform_measures <- function() {
             type = gtypes$measuresr, 
             overwrite = TRUE
         )
-        response <- read_csv(file = gfiles$measuresr) %>% 
+        response <- read_xlsx(path = gfiles$measuresr, sheet = 'Form Responses 2') %>% 
           select(matches("Wann wurden die Maßnahmen|Postleitzahl|Stadt|Um welche Maßnahme|Erzähle uns mehr|wieder aufgehoben|Wann wurde die Maßnahme aufgehoben")) %>% rename(wann=1, plz=2, stadt=3, was=4, info=5, aufgehoben=6, wann_aufgehoben=7)
         
         gverzeichnis.lookup <- read_delim(paste0(getwd(), "/data/data_landkreise/gemeindeverzeichnis.csv"), ";", escape_double = FALSE, trim_ws = TRUE)  %>% 
@@ -105,7 +106,16 @@ query_gform_measures <- function() {
             IdLandkreis = gverzeichnis.lookup$schlüssel %>% substr(1, 5)
         )
         
-        response <- response %>% as_tibble() 
+        response <- response %>% as_tibble() %>% left_join(measures_short, by = 'was')
+        if (nrow(filter(response, is.na(measure_short) & was != 'sonstiges')) > 0) {
+            warning(
+                paste0('Unconfigured short measure for measure(s) ',
+                       paste0(filter(response, is.na(measure_short))$was, collapse = ' '),
+                       'using defaults.')
+            )
+        }
+        response <- response %>% 
+            mutate(measure_short = if_else(is.na(measure_short), was, measure_short))
         
         #join by plz  
         joined.plz <- response %>% select(-stadt) %>% inner_join(gverzeichnis)
@@ -114,8 +124,11 @@ query_gform_measures <- function() {
         joined.stadt <- response %>% select(-plz) %>% inner_join(gverzeichnis)
         
         #merge: filtered result
-        result <- full_join(joined.plz, joined.stadt) %>% filter(was != "sonstiges")  %>% filter(!is.na(IdLandkreis))
-        
+        result <- bind_rows(
+            joined.stadt, joined.plz
+        ) %>% #full_join(joined.plz, joined.stadt) %>% 
+            distinct() %>% 
+            filter(was != "sonstiges") %>% filter(!is.na(IdLandkreis))
         #failed matches, here post-processing is required
         joined.fail <- anti_join(
           response,

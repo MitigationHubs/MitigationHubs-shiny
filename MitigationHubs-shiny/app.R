@@ -51,7 +51,9 @@ if (update$cases) {
         type = gtypes$cases, 
         overwrite = TRUE
     )
+    print('#')
     tibs <- excel_sheets(gfiles$cases)
+    print(tibs)
     invisible(
         lapply(tibs, 
            function(s) {
@@ -59,7 +61,7 @@ if (update$cases) {
                if ('Meldedatum' %in% colnames(temp)) {
                    temp <- mutate_at(temp, vars(Meldedatum), as.Date)
                }
-               assign(s, temp)
+               assign(x = s, value = temp, envir = globalenv())
                }
            )
     )
@@ -78,7 +80,7 @@ if (update$measuresf) {
     tibs <- excel_sheets(gfiles$measuresf)
     invisible(
         lapply(tibs, 
-               function(s) assign(s, read_xlsx(gfiles$measuresf, sheet = s)))
+               function(s) assign(s, read_xlsx(gfiles$measuresf, sheet = s), envir = globalenv()))
     )
     tibs <- lapply(tibs, get)
     save(tibs, file = afiles$measuresf)
@@ -122,9 +124,28 @@ plt_fallzahlen <- function(dat_dots, dat_smooth = NULL, dat_gr = NULL, dat_meas 
             new_scale_color()
     }
     if (!is.null(dat_meas)) {
+        if (log_scale & !shared_axes) {
+            dat_meas <- dat_meas %>% 
+                inner_join(dat_dots %>% 
+                               group_by(IdLandkreis) %>% 
+                               summarise(y = 2.5 * max(csum_LK_100kEinwohner)),
+                           by = 'IdLandkreis')
+        } else if (log_scale & shared_axes) {
+            dat_meas <- dat_meas %>% 
+                mutate(y = 2.5 * max(dat_dots$csum_LK_100kEinwohner))
+        } else if (!shared_axes) {
+            dat_meas <- dat_meas %>% 
+                inner_join(dat_dots %>% 
+                               group_by(IdLandkreis) %>% 
+                               summarise(y = 1.15 * max(csum_LK_100kEinwohner)),
+                           by = 'IdLandkreis')
+        } else {
+            dat_meas <- dat_meas %>% 
+                mutate(y = 1.15 * max(dat_dots$csum_LK_100kEinwohner))
+        }
         plt <- plt + 
-            geom_vline(aes(xintercept = date, color = measure), dat_meas, size = 1.2) + 
-            geom_label(aes(x = date, y = 0, color = measure, label = measure), dat_meas, hjust = 0.5, vjust = 1) + 
+            geom_vline(aes(xintercept = date, color = measure_short), dat_meas, size = 1.2) + 
+            geom_label(aes(x = date, y = y, color = measure_short, label = measure_short), dat_meas, hjust = 0.5, vjust = 1) + 
             scale_color_viridis_d(guide = FALSE)#guide_legend('Gegenmaßnahme', override.aes = list(size = 5)))
     }
     plt <- plt +
@@ -132,14 +153,14 @@ plt_fallzahlen <- function(dat_dots, dat_smooth = NULL, dat_gr = NULL, dat_meas 
     if (log_scale & !is.null(dat_gr)) {
         plt <- plt + 
             scale_y_log10(sec.axis = dup_axis(name = 'Wachstumsrate pro Tag / %',
-                                              breaks = 10^gr_logax_breaks, labels = gr_logax_breaks * 100),
-                          limits = c(-100, NA))
+                                              breaks = 10^gr_ax_breaks, labels = gr_ax_breaks * 100))
     } else if (log_scale) {
         plt <- plt + 
             scale_y_log10()
     } else if (!is.null(dat_gr)) {
         plt <- plt + 
-            scale_y_continuous(sec.axis = dup_axis(name = 'Wachstumsrate pro Tag / %'), limits = c(-8,NA))
+            scale_y_continuous(sec.axis = dup_axis(name = 'Wachstumsrate pro Tag / %',
+                                                   breaks = gr_ax_breaks * 100, labels = gr_ax_breaks * 100))
     } else {
         plt <- plt + 
             scale_y_continuous()
@@ -186,45 +207,65 @@ body <- dashboardBody(
                     )
                 ),
                 fluidRow(
-                    box(
-                        title = "Landkreisauswahl", status = "primary", width = 4,
-                        selectizeInput(
-                            'fallzahlen_landkreis_selector', paste('Landkreissuche (Namen eintippen) | Maximale Anzahl:', nlk_max), 
-                            choices = LK_set$Landkreis, selected = clks_selected,
-                            multiple = TRUE, options = list(maxItems = nlk_max)
+                    column(
+                        width = 4,
+                        box(
+                            status = "warning", width = 12, title = "Was sehe ich hier?",
+                            #tags$div(class="header", checked=NA,
+                            #         tags$h2("Was sehe ich hier?")
+                            #),
+                            tags$div(class="text", checked=NA,
+                                     tags$h4("Bevor du loslegst, schau dir unser",
+                                             tags$a(href="", "Erklärvideo"),
+                                             "an oder wirf einen Blick in unsere",
+                                             tags$a(href="", "Kurzanleitung"), 
+                                             ".")
+                            )
                         ),
-                        actionButton("fallzahlen_plot_action1", "Zeig mir die Fallzahlen", icon = icon("calculator"))
-                    ),
-                    box(
-                        title = "Gegenmaßnahmen", status = "primary", width = 4,
-                        checkboxGroupInput('fallzahlen_checkbox_gm', 'Bisher gesammelte Maßnahmen (noch nicht für alle Landkreise verfügbar)',
-                                           choiceNames = LK_meas_set$measure, choiceValues = LK_meas_set$measureId),
-                        actionButton("fallzahlen_plot_action2", "Zeig mir die Gegenmaßnahmen", icon = icon("calculator")),
-                        tags$div(class="header", checked=NA,
-                                 tags$h4("Gegenmaßnahme melden?",
-                                         tags$a(href="https://forms.gle/3Jd2hRYbJGRBZ42d6?hl=de", "Hier Mitmachen!"))
+                        box(
+                            status = "warning", width = 12, 
+                            tags$div(class="header", checked=NA,
+                                     tags$h3("MitigationHubs - ",
+                                             tags$a(href="https://mitigationhubs.github.io/", "mitigationhubs.github.io"))
+                            ),
+                            tags$div(class="header", checked=NA,
+                                     tags$h4("MitigationHubs bringt das Projekt #flattenthecurve in Eure Wohnzimmer! Welche Region dämmt außergewöhnlich gut die Corona-Pandemie ein? Und wieso? Der Kampf gegen das Virus ist eine wissenschaftlichen Aufgabe, welche die Beteilung der Bürger:innen benötigt. Lasst uns",
+                                             tags$a(href="https://forms.gle/3Jd2hRYbJGRBZ42d6?hl=de", "kooperieren,"),
+                                             "lasst uns positive Stories über Corona erzählen und daraus lernen!")
+                            )
                         )
                     ),
-                    box(
-                        title = "Darstellungsoptionen", status = "primary", width = 4,
-                        checkboxInput("fallzahlen_checkbox_gr", "Wachstumsraten", T),
-                        selectizeInput("fallzahlen_grd_selector", "Zeitraum zur Berechnung der Wachstumsraten", choices = c(3,7), selected = 3),
-                        checkboxInput("fallzahlen_checkbox_ls", "Logarithmische Skala (Fallzahlen)", T),
-                        checkboxInput("fallzahlen_checkbox_ta", "Gemeinsame Achsen", T),
-                        actionButton("fallzahlen_plot_action3", "Änderungen anwenden", icon = icon("calculator"))
-                    )
-                ),
-                fluidRow(
-                    box(
-                        status = "warning", width = 4, 
-                        tags$div(class="header", checked=NA,
-                                 tags$h2("MitigationHubs - ",
-                                         tags$a(href="https://mitigationhubs.github.io/", "mitigationhubs.github.io"))
+                    column(
+                        width = 4,
+                        box(
+                            title = "Landkreisauswahl", status = "primary", width = 12,
+                            selectizeInput(
+                                'fallzahlen_landkreis_selector', paste('Landkreissuche (Namen eintippen) | Maximale Anzahl:', nlk_max), 
+                                choices = LK_set$Landkreis, selected = clks_selected,
+                                multiple = TRUE, options = list(maxItems = nlk_max)
+                            ),
+                            actionButton("fallzahlen_plot_action1", "Zeig mir die Fallzahlen", icon = icon("calculator"))
                         ),
-                        tags$div(class="header", checked=NA,
-                                 tags$h4("MitigationHubs bringt das Projekt #flattenthecurve in Eure Wohnzimmer! Welche Region dämmt außergewöhnlich gut die Corona-Pandemie ein? Und wieso? Der Kampf gegen das Virus ist eine wissenschaftlichen Aufgabe, welche die Beteilung der Bürger:innen benötigt. Lasst uns",
-                                         tags$a(href="https://forms.gle/3Jd2hRYbJGRBZ42d6?hl=de", "kooperieren,"),
-                                         "lasst uns positive Stories über Corona erzählen und daraus lernen!")
+                        box(
+                            title = "Darstellungsoptionen", status = "primary", width = 12,
+                            checkboxInput("fallzahlen_checkbox_gr", "Wachstumsraten", T),
+                            selectizeInput("fallzahlen_grd_selector", "Zeitraum zur Berechnung der Wachstumsraten", choices = c(3,7), selected = 3),
+                            checkboxInput("fallzahlen_checkbox_ls", "Logarithmische Skala (Fallzahlen)", T),
+                            checkboxInput("fallzahlen_checkbox_ta", "Gemeinsame Achsen", T),
+                            actionButton("fallzahlen_plot_action3", "Änderungen anwenden", icon = icon("calculator"))
+                        )
+                    ),
+                    column(
+                        width = 4,
+                        box(
+                            title = "Gegenmaßnahmen", status = "primary", width = 12,
+                            checkboxGroupInput('fallzahlen_checkbox_gm', 'Bisher gesammelte Maßnahmen (noch nicht für alle Landkreise verfügbar)',
+                                               choiceNames = LK_meas_set$measure, choiceValues = LK_meas_set$measureId),
+                            actionButton("fallzahlen_plot_action2", "Zeig mir die Gegenmaßnahmen", icon = icon("calculator")),
+                            tags$div(class="header", checked=NA,
+                                     tags$h4("Gegenmaßnahme melden?",
+                                             tags$a(href="https://forms.gle/3Jd2hRYbJGRBZ42d6?hl=de", "Hier Mitmachen!"))
+                            )
                         )
                     )
                 )
