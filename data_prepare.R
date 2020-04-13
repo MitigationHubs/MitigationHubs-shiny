@@ -12,7 +12,7 @@ drive_auth()
 
 # query and process case numbers
 ## check N_ENTRIES here: https://www.arcgis.com/home/item.html?id=dd4580c810204019a7b8eb3e0b329dd6&view=list#data
-N_ENTRIES <- 89411
+N_ENTRIES <- 91471
 ## query, prepare and write data locally
 source('data_prepare_cases.R', local = TRUE, encoding = 'UTF-8')
 

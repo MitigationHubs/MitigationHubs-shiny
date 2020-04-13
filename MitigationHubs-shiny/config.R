@@ -38,6 +38,23 @@ gfiles <- list(
 lapply(apaths, function(p) if(!dir.exists(p)) dir.create(p, recursive = T))
 lapply(gpaths, function(p) if(!dir.exists(p)) dir.create(p, recursive = T))
 
+# type configuration for data
+actypes = list(
+    cases = list(
+        LK_dat_csum_proc = c('text', 'date', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric'),
+        LK_dat_csum_ma = c('text', 'date', 'numeric', 'numeric', 'numeric', 'date', 'date', 'logical', 'numeric', 'numeric', 'numeric'),
+        LK_dat_csum_gr3d = c('numeric', 'date', 'numeric', 'text'),
+        LK_dat_csum_gr7d = c('numeric', 'date', 'numeric', 'text'),
+        LK_dat_csum_gr_oa = c('numeric', 'numeric'),
+        LK_time = c('text'),
+        LK_set = c('text', 'numeric')
+    ),
+    measuresf = list(
+        LK_meas = c('date', 'text', 'text', 'text', 'text', 'date', 'text', 'numeric', 'numeric', 'numeric', 'text'), 
+        LK_meas_set = c('numeric', 'text', 'text')
+    )
+)
+
 # configuration for Landkreise selection
 nlk_max <- 4
 clks_selected <- c('SK Heidelberg')

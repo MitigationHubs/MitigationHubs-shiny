@@ -55,7 +55,7 @@ if (update$cases) {
     invisible(
         lapply(tibs, 
            function(s) {
-               temp <- read_xlsx(gfiles$cases, sheet = s)
+               temp <- read_xlsx(gfiles$cases, sheet = s, col_types = actypes$cases[[s]])
                if ('Meldedatum' %in% colnames(temp)) {
                    temp <- mutate_at(temp, vars(Meldedatum), as.Date)
                }
@@ -64,8 +64,10 @@ if (update$cases) {
            )
     )
     save(list = tibs, file = afiles$cases)
+    print('Loaded case data from GDrive and saved to RData')
 } else {
     load(afiles$cases)
+    print('Loaded case data from RData')
 }
 if (update$measuresf) {
     drive_download(
@@ -77,13 +79,16 @@ if (update$measuresf) {
     tibs <- excel_sheets(gfiles$measuresf)
     invisible(
         lapply(tibs, 
-               function(s) assign(s, read_xlsx(gfiles$measuresf, sheet = s), envir = globalenv()))
+               function(s) assign(s, read_xlsx(gfiles$measuresf, sheet = s, col_types = actypes$measuresf[[s]]), envir = globalenv()))
     )
     save(list = tibs, file = afiles$measuresf)
+    print('Loaded measure data from GDrive and saved to RData')
 } else {
     load(afiles$measures)
-    LK_meas <- LK_meas %>% mutate_at(vars(date), as.Date)
+    print('Loaded measure data from RData')
 }
+# type conversions for downstream
+LK_meas <- LK_meas %>% mutate_at(vars(date, wann_aufgehoben), as.Date)
 
 # save update log
 log_update <- g_update
@@ -91,7 +96,29 @@ save(log_update, file = afiles$log_update)
 
 # Define plots
 plt_fallzahlen <- function(dat_dots, dat_smooth = NULL, dat_gr = NULL, dat_meas = NULL, log_scale = T, shared_axes = T) {
-    dat_gr <- dat_gr %>% mutate_at(vars(Meldedatum), as.Date)
+    # data processing
+    ## should be minimal at this place
+    ## -> move as much processing as possible to preprocessing scripts
+    ## or at least out of app and server (and functions executed within them)
+    #dat_gr <- dat_gr %>% mutate_at(vars(Meldedatum), as.Date)
+    if (log_scale) {
+        dat_dots <- dat_dots %>% 
+            filter(csum_LK_100kEinwohner >= 1)
+        if(!is.null(dat_smooth)) {
+            dat_smooth <- dat_smooth %>% 
+                filter(csum_ma_LK_100kEinwohner >= 1)   
+        }
+        if (!is.null(dat_gr)) {
+            dat_gr <- dat_gr %>% 
+                inner_join(dat_dots %>% 
+                               group_by(IdLandkreis) %>% 
+                               summarize(mindat = min(Meldedatum)), by = 'IdLandkreis') %>% 
+                filter(Meldedatum >= mindat) %>% 
+                select(-mindat)
+        }
+    }
+    
+    # actual plotting
     plt <- ggplot(mapping = aes(x = Meldedatum)) + 
         geom_col(aes(y = csum_LK_100kEinwohner, fill = 'Fallzahlen'), dat_dots, size = 1.2, alpha = 0.2) +
         geom_point(aes(y = csum_LK_100kEinwohner, color = 'Fallzahlen'), dat_dots, size = 7, shape = '\u2716') + 
@@ -246,7 +273,7 @@ body <- dashboardBody(
                         box(
                             title = "Darstellungsoptionen", status = "primary", width = 12,
                             checkboxInput("fallzahlen_checkbox_gr", "Wachstumsraten", T),
-                            selectizeInput("fallzahlen_grd_selector", "Zeitraum zur Berechnung der Wachstumsraten", choices = c(3,7), selected = 3),
+                            selectizeInput("fallzahlen_grd_selector", "Zeitraum zur Berechnung der Wachstumsraten", choices = c(3,7), selected = 7),
                             checkboxInput("fallzahlen_checkbox_ls", "Logarithmische Skala (Fallzahlen)", T),
                             checkboxInput("fallzahlen_checkbox_ta", "Gemeinsame Achsen", T),
                             actionButton("fallzahlen_plot_action3", "Änderungen anwenden", icon = icon("calculator"))
