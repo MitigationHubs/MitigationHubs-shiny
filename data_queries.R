@@ -25,7 +25,7 @@ query_arcgis_all <- function(n_entries = 36520,
   # check if data already queried
   time <- Sys.time() %>% 
     as.Date()
-  time <- time - 1
+  time <- time# - 1
   file <- file.path(dir,paste0('data_landkreise','_',time,'.csv'))
   
   if(file.exists(file) & !force_download) {
