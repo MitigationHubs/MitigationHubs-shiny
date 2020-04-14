@@ -47,10 +47,10 @@ actypes = list(
         LK_dat_csum_gr7d = c('numeric', 'date', 'numeric', 'text'),
         LK_dat_csum_gr_oa = c('numeric', 'numeric'),
         LK_time = c('text'),
-        LK_set = c('text', 'numeric')
+        LK_set = c('text', 'numeric') 
     ),
     measuresf = list(
-        LK_meas = c('date', 'text', 'text', 'text', 'text', 'date', 'text', 'numeric', 'numeric', 'numeric', 'text'), 
+        LK_meas = c('date', 'text', 'text', 'text', 'text', 'date', 'text', 'text', 'numeric', 'numeric', 'text'), 
         LK_meas_set = c('numeric', 'text', 'text')
     )
 )
@@ -73,7 +73,10 @@ measures_short <- tibble(
         "HomeOffice-Option für Arbeitnehmer eines großen Betriebs in der Region",
         "Schutzvorrichtungen zur Kontaktvermeidung in Läden wie Supermärkten oder Apotheken",
         "Betretungsregeln für öffentliche Geschäfte",
-        "weitgehende Ladenschließungen (Supermärkte, Drogerien, Apotheken ausgenommen)"
+        "weitgehende Ladenschließungen (Supermärkte, Drogerien, Apotheken ausgenommen)",
+        "1. Maßnahmenpaket der Bundesregierung",
+        "2. Maßnahmenpaket der Bundesregierung",
+        "bundesweite Schließung von Kindergärten & Schulen"
     ),
     measure_short = c(
         "Schul-, Kita- &/oder Kigaschließung",
@@ -87,7 +90,10 @@ measures_short <- tibble(
         "Home Office für viele Beschäftigte",
         "Schutzmaßnahmen in Geschäften",
         "Betretungsregeln für Geschäfte",
-        "Ladenschließungen"
+        "Ladenschließungen",
+        "1. Maßnahmenpaket",
+        "2. Maßnahmenpaket",
+        "bundesweite Schul-& KiGa-Schließungen"
     )
 )
 
