@@ -98,13 +98,13 @@ query_gform_measures <- function() {
           select(matches("Wann wurden die Maßnahmen|Postleitzahl|Stadt|Um welche Maßnahme|Erzähle uns mehr|wieder aufgehoben|Wann wurde die Maßnahme aufgehoben")) %>% rename(wann=1, plz=2, stadt=3, was=4, info=5, aufgehoben=6, wann_aufgehoben=7)
         
         gverzeichnis.lookup <- read_delim(paste0(getwd(), "/data/data_landkreise/gemeindeverzeichnis.csv"), ";", escape_double = FALSE, trim_ws = TRUE)  %>% 
-          select(matches("Amtl.Gemeindeschlüssel|PLZ Ort")) %>% rename(schlüssel=1, plz_ort=2)
+          select(matches("Amtl.Gemeindeschlüssel|PLZ Ort")) %>% rename(schlüssel=1, plz_ort=2) %>% distinct()
         
         gverzeichnis <- tibble(
-            plz = as.numeric(unlist(regmatches(gverzeichnis.lookup$plz_ort, gregexpr("[[:digit:]]+", gverzeichnis.lookup$plz_ort)))),
+            plz = as.character(unlist(regmatches(gverzeichnis.lookup$plz_ort, gregexpr("[[:digit:]]+", gverzeichnis.lookup$plz_ort)))),
             stadt = sub("^\\s+", "", gsub('[[:digit:]]+', '', gverzeichnis.lookup$plz_ort)),
             IdLandkreis = gverzeichnis.lookup$schlüssel %>% substr(1, 5)
-        )
+        ) %>% distinct()
         
         response <- response %>% as_tibble() %>% left_join(measures_short, by = 'was')
         if (nrow(filter(response, is.na(measure_short) & was != 'sonstiges')) > 0) {
@@ -117,6 +117,7 @@ query_gform_measures <- function() {
         response <- response %>% 
             mutate(measure_short = if_else(is.na(measure_short), was, measure_short))
         
+        response$plz <- response$plz %>% as.character()
         #join by plz  
         joined.plz <- response %>% select(-stadt) %>% inner_join(gverzeichnis)
         
@@ -134,8 +135,14 @@ query_gform_measures <- function() {
           response,
           result %>% select(-plz, -stadt))
         
+        result.global <- joined.fail %>% filter(plz==0, stadt=="bundesweit") %>% select(-measure_short) %>% 
+          mutate(was = ifelse(was == "sonstiges", info, was)) %>% left_join(measures_short, by = 'was') %>% select(-plz, -stadt)
+        
+        result.global <- tidyr::crossing(gverzeichnis, result.global)
+        
         l <- list(
             result = result,
+            result.global = result.global,
             joined.fail = joined.fail
         )
         

@@ -73,7 +73,10 @@ measures_short <- tibble(
         "HomeOffice-Option für Arbeitnehmer eines großen Betriebs in der Region",
         "Schutzvorrichtungen zur Kontaktvermeidung in Läden wie Supermärkten oder Apotheken",
         "Betretungsregeln für öffentliche Geschäfte",
-        "weitgehende Ladenschließungen (Supermärkte, Drogerien, Apotheken ausgenommen)"
+        "weitgehende Ladenschließungen (Supermärkte, Drogerien, Apotheken ausgenommen)",
+        "1. Maßnahmenpaket der Bundesregierung",
+        "2. Maßnahmenpaket der Bundesregierung",
+        "bundesweite Schließung von Kindergärten & Schulen"
     ),
     measure_short = c(
         "Schul-, Kita- &/oder Kigaschließung",
@@ -87,7 +90,10 @@ measures_short <- tibble(
         "Home Office für viele Beschäftigte",
         "Schutzmaßnahmen in Geschäften",
         "Betretungsregeln für Geschäfte",
-        "Ladenschließungen"
+        "Ladenschließungen",
+        "1. Maßnahmenpaket",
+        "2. Maßnahmenpaket",
+        "bundesweite Schul-& KiGa-Schließungen"
     )
 )
 
