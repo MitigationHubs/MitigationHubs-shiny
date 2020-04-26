@@ -1,3 +1,4 @@
+library(tibble)
 # paths and files related to app
 apaths <- list(
     data_prepared = 'data_prepared',

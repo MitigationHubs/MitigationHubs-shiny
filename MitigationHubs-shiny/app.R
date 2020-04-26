@@ -12,6 +12,7 @@ library(shinydashboard)
 library(googledrive)
 library(ggplot2)
 library(ggnewscale)
+#library(ggrepel)
 library(readr)
 library(dplyr)
 library(readxl)
@@ -169,7 +170,8 @@ plt_fallzahlen <- function(dat_dots, dat_smooth = NULL, dat_gr = NULL, dat_meas 
         }
         plt <- plt + 
             geom_vline(aes(xintercept = date, color = measure_short), dat_meas, size = 1.2) + 
-            geom_label(aes(x = date, y = y, color = measure_short, label = measure_short), dat_meas, hjust = 0.5, vjust = 1) + 
+            geom_label(aes(x = date, y = y, color = measure_short, label = measure_short), dat_meas, hjust = 0.5, vjust = 1) +
+            #geom_label_repel(aes(x = date, y = y, color = measure_short, label = measure_short), dat_meas, hjust = 0.5, vjust = 1, direction = 'x', nudge_y = 0.5, box.padding = 1) + 
             scale_color_viridis_d(guide = FALSE)#guide_legend('Gegenmaßnahme', override.aes = list(size = 5)))
     }
     plt <- plt +
