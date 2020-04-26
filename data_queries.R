@@ -19,13 +19,13 @@ library(readxl)
 query_arcgis_all <- function(n_entries = 36520,
                              batch_size = 5000,
                              force_download = FALSE,
-                             write2file = T,
+                             write2file = TRUE,
                              dir = './data/data_cases') {
-  n_batch <- seq(0, plyr::round_any(n_entries, 1e3), by = batch_size)
+  n_batch <- format(seq(0, plyr::round_any(n_entries, 1e3), by = batch_size), scientific = FALSE)
   # check if data already queried
   time <- Sys.time() %>% 
     as.Date()
-  time <- time# - 1
+  time <- time - 1
   file <- file.path(dir,paste0('data_landkreise','_',time,'.csv'))
   
   if(file.exists(file) & !force_download) {
@@ -53,7 +53,7 @@ query_arcgis_all <- function(n_entries = 36520,
     dat <- lapply(n_batch, function(n_b){
       qloc <- paste0(arcgis_url,
                      'query?where=ObjectId+>+0&objectIds=&time=&resultType=none&outFields=*&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=false&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=',
-                     as.character(n_b),'&resultRecordCount=&sqlFormat=standard&f=pgeojson&token='
+                     as.character(format(n_b, scientific = FALSE)),'&resultRecordCount=&sqlFormat=standard&f=pgeojson&token='
                      )
       resp <- GET(qloc)
       if (http_error(resp)) stop('http error')
@@ -71,6 +71,7 @@ query_arcgis_all <- function(n_entries = 36520,
     if (write2file) {
         if (!dir.exists(dir)) dir.create(dir)
         file <- file.path(dir,paste0('data_landkreise','_',date,'.csv'))
+        print('#')
         readr::write_csv(x = dat, path = file)   
     }
   }
