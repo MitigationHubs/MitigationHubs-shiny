@@ -292,6 +292,17 @@ body <- dashboardBody(
                                      tags$h4("Gegenmaßnahme melden?",
                                              tags$a(href="https://forms.gle/3Jd2hRYbJGRBZ42d6?hl=de", "Hier Mitmachen!"))
                             )
+                        ),
+                        box(
+                            status = "primary", width = 12, title="Erklärung zu den Maßnahmenpaketen",
+                            tags$div(class="text", checked=NA,
+                                     tags$h5(tags$a(href="https://www.bundesregierung.de/breg-de/themen/coronavirus/beschluss-zu-corona-1730292",
+                                     "1. Maßnahmenpaket"), "(12.03.2020): u.a. Stärkung der Intensiv- & Beatmungskapazitäten, 
+                                             Absage von Veranstaltungen mit mehr als 1.000 Teilnehmer:innen, 
+                                             Ankündigung von Liquiditätshilfen"),
+                                     tags$h5(tags$a(href="https://www.bundesregierung.de/breg-de/themen/coronavirus/besprechung-der-bundeskanzlerin-mit-den-regierungschefinnen-und-regierungschefs-der-laender-1733248",
+                                                    "2. Maßnahmenpaket"), "(22.03.2020): u.a. Abstandsregeln im öffentlichen Leben & Kontaktsperren, Schließung von Gastronomiebetrieben & weiteren Geschäften")
+                            )
                         )
                     )
                 )
