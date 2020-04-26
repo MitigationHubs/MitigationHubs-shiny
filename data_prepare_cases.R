@@ -5,6 +5,15 @@ LK_dat_list <- query_arcgis_all(n_entries = N_ENTRIES)
 LK_time <- as.character(LK_dat_list$time)
 LK_dat <- LK_dat_list$dat
 
+fix_Berlin <- function(LK_dat){
+    Berlin_cases <- LK_dat %>% filter(11001 <= IdLandkreis & IdLandkreis <= 11012) %>%
+        mutate(Landkreis="SK Berlin", IdLandkreis=as.character(11000)) 
+    LK_dat <- LK_dat %>% filter(11001 > IdLandkreis | IdLandkreis > 11012) %>% full_join(Berlin_cases)
+    return(LK_dat)
+}
+
+LK_dat <- fix_Berlin(LK_dat)
+
 LK_dat_csum <- LK_dat %>%
     group_by(Landkreis, Meldedatum, IdLandkreis) %>% 
     summarise(sum_LK = sum(AnzahlFall)) %>% 
